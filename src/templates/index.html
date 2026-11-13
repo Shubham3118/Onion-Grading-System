@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>AGMARK AI Onion Quality & Price Forecaster</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════
+   CSS VARIABLES
+═══════════════════════════════════════════════════ */
+:root {
+  --bg:        #080e1d;
+  --bg2:       #0f1829;
+  --card:      #111d33;
+  --input:     #0a1020;
+  --border:    rgba(80,100,160,.25);
+  --borderhi:  rgba(52,211,153,.4);
+  --txt:       #eef2ff;
+  --muted:     #7a8fab;
+  --green:     #10b981;
+  --blue:      #38bdf8;
+  --indigo:    #6366f1;
+  --amber:     #f59e0b;
+  --rose:      #f43f5e;
+  --cyan:      #06b6d4;
+  --violet:    #8b5cf6;
+  --glass:     rgba(17,29,51,.78);
+  --blur:      blur(20px);
+  --r:         16px;
+  --rm:        11px;
+  --shadow:    0 8px 32px rgba(0,0,0,.5);
+  --tr:        all .22s cubic-bezier(.4,0,.2,1);
+}
+[data-theme="light"] {
+  --bg:   #f0f4f9; --bg2: #e8edf5; --card: #ffffff;
+  --input:#f4f7fb; --border:rgba(0,0,0,.10); --borderhi:rgba(16,185,129,.45);
+  --txt:  #0f172a; --muted:#64748b; --glass:rgba(255,255,255,.82);
+  --shadow:0 4px 20px rgba(0,0,0,.12);
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--txt);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;transition:background .3s,color .3s}
+
+/* ═══════════════════════════════════════════════════
+   NAVBAR
+═══════════════════════════════════════════════════ */
+.navbar-main {
+  position: sticky; top:0; z-index:999;
+  background: rgba(8,14,29,.85);
+  backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+  border-bottom: 1px solid var(--border);
+  transition: box-shadow .3s, background .3s;
+}
+[data-theme="light"] .navbar-main {
+  background: rgba(240,244,249,.88);
+}
+.navbar-inner {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .7rem 0; gap: 1rem; flex-wrap: nowrap;
+}
+
+/* Brand */
+.brand { display:flex; align-items:center; gap:.7rem; text-decoration:none; flex-shrink:0 }
+.brand-icon {
+  width:42px; height:42px; border-radius:12px; flex-shrink:0;
+  background: linear-gradient(135deg,#4f46e5 0%,#10b981 100%);
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.3rem; box-shadow:0 4px 16px rgba(79,70,229,.4);
+  transition: var(--tr);
+}
+.brand-icon:hover { transform:scale(1.07); box-shadow:0 6px 22px rgba(79,70,229,.55) }
+.brand-name {
+  font-size: 1rem; font-weight:800; line-height:1.1;
+  background: linear-gradient(90deg,#a5b4fc,#34d399);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  letter-spacing:-.2px; white-space:nowrap;
+}
+.brand-sub { font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.7px }
+
+/* Nav links – center */
+.nav-links {
+  display:flex; align-items:center; gap:.2rem; flex:1; justify-content:center;
+}
+.nav-link {
+  display:flex; align-items:center; gap:.4rem;
+  color:var(--muted); font-size:.82rem; font-weight:600;
+  padding:.42rem .9rem; border-radius:50px; border:1px solid transparent;
+  text-decoration:none; cursor:pointer; background:none;
+  transition: var(--tr); white-space:nowrap;
+}
+.nav-link:hover { color:var(--txt); background:rgba(99,102,241,.12); border-color:rgba(99,102,241,.28) }
+.nav-link.active { color:#a5b4fc; background:rgba(99,102,241,.18); border-color:rgba(99,102,241,.38) }
+.nav-link i { font-size:.78rem }
+
+/* Right cluster */
+.nav-right { display:flex; align-items:center; gap:.5rem; flex-shrink:0 }
+
+.nav-live {
+  display:flex; align-items:center; gap:.45rem;
+  font-size:.72rem; font-weight:700; color:#34d399;
+  background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.3);
+  padding:.3rem .8rem; border-radius:50px;
+}
+.live-dot {
+  width:7px; height:7px; border-radius:50%; background:#34d399;
+  animation: blink 1.5s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+.lang-grp { display:flex; gap:.22rem }
+.lang-btn {
+  background:none; border:1px solid var(--border); color:var(--muted);
+  border-radius:50px; padding:.28rem .65rem; font-size:.73rem; font-weight:700;
+  cursor:pointer; transition:var(--tr);
+}
+.lang-btn:hover,.lang-btn.active { background:var(--indigo); color:#fff; border-color:var(--indigo) }
+
+.theme-btn {
+  background:var(--glass); backdrop-filter:var(--blur);
+  border:1px solid var(--border); color:var(--txt);
+  border-radius:50px; padding:.35rem .9rem; font-size:.8rem; font-weight:600;
+  cursor:pointer; transition:var(--tr); white-space:nowrap; display:flex; align-items:center; gap:.35rem;
+}
+.theme-btn:hover { border-color:var(--green); color:var(--green) }
+
+/* Hamburger */
+.hamburger {
+  display:none; background:none; border:1px solid var(--border); color:var(--txt);
+  border-radius:9px; width:36px; height:36px; align-items:center; justify-content:center;
+  cursor:pointer; font-size:1rem; transition:var(--tr); flex-shrink:0;
+}
+.hamburger:hover { border-color:var(--indigo); color:var(--indigo) }
+
+/* Mobile drawer */
+.mobile-menu {
+  display:none; flex-direction:column; gap:.3rem;
+  padding:.85rem 0 1rem; border-top:1px solid var(--border);
+}
+.mobile-menu.open { display:flex }
+.mobile-menu .nav-link { justify-content:flex-start }
+
+/* Divider between sections of mobile menu */
+.mobile-divider { border:none; border-top:1px solid var(--border); margin:.3rem 0 }
+
+/* ═══════════════════════════════════════════════════
+   HERO BAND
+═══════════════════════════════════════════════════ */
+.hero {
+  background: linear-gradient(135deg,#060d20 0%,#0f1f4a 45%,#160c50 100%);
+  border-bottom:1px solid var(--border); padding:2.2rem 0 2rem;
+  position:relative; overflow:hidden;
+}
+[data-theme="light"] .hero {
+  background: linear-gradient(135deg,#2d2580 0%,#3730a3 50%,#1e3a8a 100%);
+}
+.hero::before {
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:
+    radial-gradient(ellipse 65% 80% at 12% 55%, rgba(99,102,241,.2) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 65% at 88% 25%, rgba(16,185,129,.15) 0%, transparent 55%);
+}
+.hero::after {
+  content:''; position:absolute; bottom:0; left:0; right:0; height:48px;
+  background:linear-gradient(transparent,var(--bg)); pointer-events:none;
+}
+[data-theme="light"] .hero::after { background:linear-gradient(transparent,var(--bg)) }
+
+.hero-content { position:relative; z-index:1 }
+
+.hero-badge {
+  display:inline-flex; align-items:center; gap:.4rem;
+  background:linear-gradient(90deg,#6366f1,#8b5cf6);
+  color:#fff; font-size:.72rem; font-weight:800;
+  padding:.3rem 1rem; border-radius:50px; letter-spacing:.6px; margin-bottom:.9rem;
+}
+.hero-live-badge {
+  display:inline-flex; align-items:center; gap:.4rem;
+  background:rgba(16,185,129,.18); border:1px solid rgba(16,185,129,.4);
+  color:#34d399; font-size:.72rem; font-weight:700;
+  padding:.3rem .8rem; border-radius:50px;
+}
+.hero-title {
+  font-size:clamp(1.3rem,3.5vw,2rem); font-weight:900; color:#fff;
+  letter-spacing:-.4px; line-height:1.15; margin-bottom:.5rem;
+}
+.hero-sub { font-size:.88rem; color:#a5b4fc; margin-bottom:0 }
+
+.hero-stats { display:flex; gap:.75rem; flex-wrap:wrap }
+.stat-chip {
+  background:rgba(255,255,255,.07); backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,.13); border-radius:14px;
+  padding:.6rem 1.1rem; text-align:center; min-width:84px;
+  transition:var(--tr);
+}
+.stat-chip:hover { background:rgba(255,255,255,.12); border-color:rgba(255,255,255,.22) }
+.stat-num { font-size:1.2rem; font-weight:900; color:#fff }
+.stat-lbl { font-size:.62rem; color:#a5b4fc; text-transform:uppercase; letter-spacing:.5px; margin-top:.1rem }
+
+/* ═══════════════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════════════ */
+.card {
+  background:var(--glass); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--border); border-radius:var(--r);
+  box-shadow:var(--shadow); margin-bottom:1.25rem; transition:var(--tr);
+}
+.card:hover { border-color:var(--borderhi) }
+.card-pad { padding:1.5rem 1.6rem }
+
+.sec-head {
+  display:flex; align-items:center; gap:.6rem;
+  font-size:.98rem; font-weight:700; margin-bottom:1.1rem;
+}
+.sec-icon {
+  width:34px; height:34px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center; font-size:.9rem; flex-shrink:0;
+}
+
+/* ═══════════════════════════════════════════════════
+   FORM CONTROLS
+═══════════════════════════════════════════════════ */
+.flabel { font-size:.8rem; color:var(--muted); font-weight:600; display:block; margin-bottom:.38rem }
+.fc {
+  background:var(--input); border:1px solid var(--border); color:var(--txt);
+  border-radius:var(--rm); padding:.55rem .9rem; font-size:.87rem;
+  width:100%; outline:none; transition:var(--tr);
+}
+.fc:focus { border-color:var(--indigo); box-shadow:0 0 0 3px rgba(99,102,241,.18) }
+[data-theme="light"] .fc { color:#0f172a }
+
+/* Drop zone */
+.drop-zone {
+  border:2px dashed var(--border); border-radius:var(--rm);
+  padding:1.7rem 1rem; text-align:center; cursor:pointer;
+  transition:var(--tr); position:relative;
+}
+.drop-zone:hover,.drop-zone.over { border-color:var(--green); background:rgba(16,185,129,.05) }
+.drop-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100% }
+.dz-icon { font-size:2rem; color:var(--indigo); margin-bottom:.45rem }
+.dz-text { font-size:.82rem; color:var(--muted) }
+.dz-name { font-size:.75rem; color:var(--green); margin-top:.4rem }
+
+/* Buttons */
+.btn-run {
+  background:linear-gradient(135deg,#4338ca,#6366f1);
+  color:#fff; border:none; border-radius:var(--rm);
+  padding:.72rem 1.4rem; font-weight:700; font-size:.92rem;
+  cursor:pointer; width:100%; transition:var(--tr);
+  box-shadow:0 4px 16px rgba(99,102,241,.38);
+  display:flex; align-items:center; justify-content:center; gap:.5rem;
+}
+.btn-run:hover { transform:translateY(-1px); box-shadow:0 7px 24px rgba(99,102,241,.5) }
+.btn-run:disabled { opacity:.55; cursor:not-allowed; transform:none }
+
+.btn-cam {
+  background:rgba(6,182,212,.1); color:var(--cyan);
+  border:1px solid rgba(6,182,212,.38); border-radius:var(--rm);
+  padding:.6rem 1.2rem; font-weight:700; font-size:.87rem;
+  cursor:pointer; width:100%; transition:var(--tr);
+  display:flex; align-items:center; justify-content:center; gap:.5rem;
+}
+.btn-cam:hover { background:rgba(6,182,212,.2) }
+.btn-cam-stop {
+  background:rgba(244,63,94,.1); color:var(--rose);
+  border:1px solid rgba(244,63,94,.38); border-radius:var(--rm);
+  padding:.6rem 1.2rem; font-weight:700; font-size:.87rem;
+  cursor:pointer; width:100%; transition:var(--tr);
+  display:flex; align-items:center; justify-content:center; gap:.5rem;
+}
+.btn-cam-stop:hover { background:rgba(244,63,94,.2) }
+
+.btn-sm {
+  background:var(--input); border:1px solid var(--border); color:var(--txt);
+  border-radius:50px; padding:.38rem .95rem; font-size:.78rem; font-weight:600;
+  cursor:pointer; transition:var(--tr);
+  display:inline-flex; align-items:center; gap:.38rem;
+}
+.btn-sm:hover { border-color:var(--green); color:var(--green) }
+
+.btn-wa {
+  background:linear-gradient(135deg,#25D366,#128C7E);
+  color:#fff; border:none; border-radius:50px;
+  padding:.38rem .95rem; font-size:.78rem; font-weight:700;
+  cursor:pointer; transition:var(--tr);
+  display:inline-flex; align-items:center; gap:.38rem;
+}
+.btn-wa:hover { transform:translateY(-1px); box-shadow:0 4px 14px rgba(37,211,102,.38) }
+
+/* ═══════════════════════════════════════════════════
+   AGMARK TABLE
+═══════════════════════════════════════════════════ */
+.agmark-tbl { width:100%; border-collapse:separate; border-spacing:0 5px; font-size:.82rem }
+.agmark-tbl thead th { color:var(--muted); font-size:.72rem; text-transform:uppercase; letter-spacing:.5px; padding:.35rem .6rem; font-weight:600 }
+.agmark-tbl tbody tr { background:var(--input) }
+.agmark-tbl tbody td { padding:.55rem .6rem }
+.agmark-tbl tbody td:first-child { border-radius:9px 0 0 9px }
+.agmark-tbl tbody td:last-child  { border-radius:0 9px 9px 0 }
+
+/* Grade badges */
+.gb { display:inline-block; border-radius:50px; padding:.2rem .75rem; font-weight:700; font-size:.76rem; letter-spacing:.3px }
+.gb-a { background:rgba(16,185,129,.18); color:#34d399; border:1px solid rgba(16,185,129,.38) }
+.gb-b { background:rgba(245,158,11,.18); color:#fbbf24; border:1px solid rgba(245,158,11,.38) }
+.gb-s { background:rgba(6,182,212,.18);  color:#22d3ee; border:1px solid rgba(6,182,212,.38)  }
+.gb-r { background:rgba(244,63,94,.18);  color:#fb7185; border:1px solid rgba(244,63,94,.38)  }
+
+/* Source bar */
+.src-bar {
+  border-left:3px solid var(--blue); background:var(--input);
+  border-radius:0 9px 9px 0; padding:.65rem 1rem;
+  font-size:.78rem; color:var(--muted); margin-bottom:.9rem;
+}
+
+/* ═══════════════════════════════════════════════════
+   PRICE CHART & TILES
+═══════════════════════════════════════════════════ */
+.chart-wrap { position:relative; height:230px }
+
+.advice-box {
+  background:linear-gradient(135deg,var(--input),var(--card));
+  border:1px solid var(--borderhi); border-radius:var(--rm);
+  padding:1rem 1.15rem; display:flex; align-items:center; gap:.9rem;
+}
+.trend-chip {
+  display:inline-block; border-radius:50px;
+  padding:.22rem .8rem; font-size:.75rem; font-weight:700; margin-bottom:.3rem;
+}
+.tc-bull  { background:rgba(16,185,129,.18); color:#34d399; border:1px solid rgba(16,185,129,.4) }
+.tc-bear  { background:rgba(244,63,94,.18);  color:#fb7185; border:1px solid rgba(244,63,94,.4)  }
+.tc-flat  { background:rgba(99,102,241,.18); color:#a5b4fc; border:1px solid rgba(99,102,241,.4) }
+
+.metric-tile {
+  background:var(--input); border:1px solid var(--border); border-radius:var(--rm);
+  padding:.85rem .65rem; text-align:center; transition:var(--tr);
+}
+.metric-tile:hover { border-color:var(--borderhi) }
+.mv { font-size:1.3rem; font-weight:800; color:var(--blue) }
+.ml { font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; margin-top:.12rem }
+
+/* Mandi select */
+.mandi-wrap select {
+  background:var(--input); border:1px solid var(--border); color:var(--txt);
+  border-radius:50px; padding:.35rem 1rem; font-size:.8rem; outline:none; cursor:pointer;
+}
+
+/* ═══════════════════════════════════════════════════
+   CV OUTPUT
+═══════════════════════════════════════════════════ */
+.al-badge {
+  background:linear-gradient(135deg,rgba(99,102,241,.25),rgba(139,92,246,.15));
+  border:1px solid rgba(139,92,246,.5); color:#c4b5fd;
+  border-radius:50px; padding:.3rem .9rem; font-size:.75rem; font-weight:700;
+  display:inline-flex; align-items:center; gap:.38rem;
+}
+
+.vision-img {
+  width:100%; max-height:350px; object-fit:contain;
+  border-radius:var(--rm); border:1px solid var(--border); background:#040810;
+}
+
+.grade-hero {
+  border-radius:var(--rm); padding:.95rem 1.2rem;
+  display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;
+}
+.gh-a { background:linear-gradient(135deg,rgba(16,185,129,.2),rgba(16,185,129,.05)); border:1px solid rgba(16,185,129,.32) }
+.gh-b { background:linear-gradient(135deg,rgba(245,158,11,.2),rgba(245,158,11,.05)); border:1px solid rgba(245,158,11,.32) }
+.gh-s { background:linear-gradient(135deg,rgba(6,182,212,.2),rgba(6,182,212,.05));   border:1px solid rgba(6,182,212,.32)  }
+.gh-r { background:linear-gradient(135deg,rgba(244,63,94,.2),rgba(244,63,94,.05));   border:1px solid rgba(244,63,94,.32)  }
+.gh-m { background:linear-gradient(135deg,rgba(249,115,22,.2),rgba(249,115,22,.05)); border:1px solid rgba(249,115,22,.32) }
+.gh-n { background:rgba(20,30,50,.4); border:1px solid var(--border) }
+.grade-lbl { font-size:1.75rem; font-weight:900; letter-spacing:-.3px }
+.price-pill { background:linear-gradient(135deg,#059669,#10b981); color:#fff; padding:.45rem 1.15rem; border-radius:50px; font-weight:800; font-size:1.1rem; white-space:nowrap }
+.price-pill-r { background:linear-gradient(135deg,#9f1239,#e11d48) }
+
+.item-card {
+  background:var(--input); border:1px solid var(--border);
+  border-radius:var(--rm); padding:.95rem 1.05rem; margin-bottom:.65rem;
+  transition:var(--tr); cursor:pointer;
+}
+.item-card:hover,.item-card.hl { border-color:var(--blue); box-shadow:0 0 18px rgba(56,189,248,.22); transform:translateY(-1px) }
+.stat-pill { background:var(--card); border:1px solid var(--border); border-radius:7px; padding:.28rem .6rem; font-size:.76rem; display:inline-block }
+
+.empty-state { text-align:center; padding:3rem 1rem; color:var(--muted) }
+.empty-state i { font-size:2.8rem; opacity:.3; display:block; margin-bottom:.9rem }
+
+/* Camera status */
+.cam-status { border-radius:50px; padding:.32rem .85rem; font-size:.76rem; font-weight:700; display:inline-flex; align-items:center; gap:.38rem }
+.cs-live     { background:rgba(16,185,129,.18); color:#34d399; border:1px solid rgba(16,185,129,.45) }
+.cs-detect   { background:rgba(245,158,11,.18); color:#fbbf24; border:1px solid rgba(245,158,11,.45) }
+.cs-off      { background:rgba(100,116,139,.15); color:#94a3b8; border:1px solid rgba(100,116,139,.3) }
+
+/* Misc */
+.divhr { border:none; border-top:1px solid var(--border); margin:1rem 0 }
+@keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+.fade-up { animation:fadeUp .3s ease both }
+@keyframes pulseRing { 0%{box-shadow:0 0 0 0 rgba(16,185,129,.6)} 70%{box-shadow:0 0 0 8px rgba(16,185,129,0)} 100%{box-shadow:0 0 0 0 rgba(16,185,129,0)} }
+.pulse { animation:pulseRing 1.6s infinite }
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:#2d3f60;border-radius:99px}
+
+/* Light mode fixes */
+[data-theme="light"] .metric-tile,
+[data-theme="light"] .stat-pill,
+[data-theme="light"] .src-bar,
+[data-theme="light"] .item-card { background:#f1f5fb }
+[data-theme="light"] .drop-zone { background:#f8fafc }
+[data-theme="light"] .vision-img { background:#e2e8f0 }
+[data-theme="light"] .agmark-tbl tbody tr { background:#f1f5fb }
+
+/* Responsive */
+@media(max-width:991px){
+  .nav-links { display:none }
+  .hamburger { display:flex }
+}
+@media(max-width:575px){
+  .nav-live { display:none }
+  .brand-sub { display:none }
+  .stat-chip { min-width:70px; padding:.5rem .7rem }
+  .stat-num { font-size:1rem }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     STICKY NAVBAR
+════════════════════════════════════════════════════ -->
+<nav class="navbar-main" id="mainNav">
+  <div class="container">
+    <div class="navbar-inner">
+
+      <!-- Brand -->
+      <a class="brand" href="#">
+        <div class="brand-icon">🧅</div>
+        <div>
+          <div class="brand-name">AGMARK AI</div>
+          <div class="brand-sub">Onion Quality &amp; Price Engine v3.3</div>
+        </div>
+      </a>
+
+      <!-- Center links -->
+      <div class="nav-links" id="navLinks">
+        <button class="nav-link active" onclick="navTo('inspectSec')">
+          <i class="fa-solid fa-camera"></i> Inspect
+        </button>
+        <button class="nav-link" onclick="navTo('priceSec')">
+          <i class="fa-solid fa-chart-line"></i> Price Forecast
+        </button>
+        <button class="nav-link" onclick="navTo('cvSec')">
+          <i class="fa-solid fa-display"></i> CV Output
+        </button>
+        <a class="nav-link" href="/docs" target="_blank">
+          <i class="fa-solid fa-code"></i> API Docs
+        </a>
+      </div>
+
+      <!-- Right cluster -->
+      <div class="nav-right">
+        <div class="nav-live">
+          <span class="live-dot"></span> API Online
+        </div>
+        <div class="lang-grp">
+          <button class="lang-btn active" onclick="setLang('en')">EN</button>
+          <button class="lang-btn" onclick="setLang('hi')">हि</button>
+          <button class="lang-btn" onclick="setLang('mr')">म</button>
+        </div>
+        <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">
+          <i class="fa-solid fa-moon"></i> Dark
+        </button>
+        <button class="hamburger" id="hamburger" onclick="toggleMenu()">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+      </div>
+    </div><!-- /navbar-inner -->
+
+    <!-- Mobile drawer -->
+    <div class="mobile-menu" id="mobileMenu">
+      <button class="nav-link" onclick="navTo('inspectSec');toggleMenu()"><i class="fa-solid fa-camera"></i> Inspect</button>
+      <button class="nav-link" onclick="navTo('priceSec');toggleMenu()"><i class="fa-solid fa-chart-line"></i> Price Forecast</button>
+      <button class="nav-link" onclick="navTo('cvSec');toggleMenu()"><i class="fa-solid fa-display"></i> CV Output</button>
+      <a class="nav-link" href="/docs" target="_blank"><i class="fa-solid fa-code"></i> API Docs</a>
+      <hr class="mobile-divider"/>
+      <div class="lang-grp">
+        <button class="lang-btn active" onclick="setLang('en')">EN</button>
+        <button class="lang-btn" onclick="setLang('hi')">हिंदी</button>
+        <button class="lang-btn" onclick="setLang('mr')">मराठी</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════
+     HERO BAND
+════════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="container hero-content">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+
+      <!-- Left -->
+      <div>
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+          <span class="hero-badge"><i class="fa-solid fa-trophy me-1"></i>SIH WINNING FEATURE</span>
+          <span class="hero-live-badge"><span class="live-dot"></span>LIVE</span>
+        </div>
+        <h1 class="hero-title" data-i18n="hero_title">AGMARK AI Onion Quality &amp; Price Forecaster</h1>
+        <p class="hero-sub" data-i18n="hero_sub">Real-Time Computer Vision &nbsp;·&nbsp; AGMARK Grading &nbsp;·&nbsp; AI Price Trend Forecast</p>
+      </div>
+
+      <!-- Stats -->
+      <div class="hero-stats">
+        <div class="stat-chip"><div class="stat-num">4</div><div class="stat-lbl">Grades</div></div>
+        <div class="stat-chip"><div class="stat-num">5</div><div class="stat-lbl">Mandis</div></div>
+        <div class="stat-chip"><div class="stat-num">14d</div><div class="stat-lbl">Forecast</div></div>
+        <div class="stat-chip"><div class="stat-num" id="heroSamples">—</div><div class="stat-lbl">AI Samples</div></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════
+     MAIN CONTENT
+════════════════════════════════════════════════════ -->
+<main class="container my-4 pb-5">
+<div class="row g-3">
+
+  <!-- ══════════ LEFT COLUMN ══════════ -->
+  <div class="col-lg-5">
+
+    <!-- Inspect Card -->
+    <div class="card" id="inspectSec">
+      <div class="card-pad">
+        <div class="sec-head">
+          <span class="sec-icon" style="background:rgba(99,102,241,.18)"><i class="fa-solid fa-camera" style="color:#a5b4fc"></i></span>
+          <span data-i18n="inspect_title">Image &amp; Live Feed Inspection</span>
+        </div>
+
+        <!-- Drop zone -->
+        <span class="flabel" data-i18n="upload_label">Upload Produce Image</span>
+        <div class="drop-zone mb-3" id="dropZone">
+          <input type="file" id="imageFile" accept="image/*"/>
+          <div class="dz-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+          <div class="dz-text" data-i18n="drop_hint">Drag &amp; drop or click to browse</div>
+          <div class="dz-name" id="dzName"></div>
+        </div>
+
+        <!-- Calibration -->
+        <span class="flabel" data-i18n="calib_label">Camera Distance Calibration</span>
+        <select id="distPreset" class="fc mb-2">
+          <option value="2.5">📷 Standard Desk Camera (~30 cm) [2.5 px/mm]</option>
+          <option value="4.5">🔍 Close-Up Inspection (~15 cm) [4.5 px/mm]</option>
+          <option value="1.2">🔭 Overhead Conveyor / Crate (~60 cm) [1.2 px/mm]</option>
+          <option value="custom">⚙️ Custom Manual Calibration</option>
+        </select>
+        <div id="customCalib" class="d-none mb-2">
+          <span class="flabel" data-i18n="custom_px">Custom px/mm value</span>
+          <input type="number" step="0.1" id="calibPx" class="fc" value="2.5"/>
+        </div>
+
+        <!-- Run button -->
+        <button id="runBtn" class="btn-run mt-1" onclick="runAssessment()">
+          <i class="fa-solid fa-microscope"></i>
+          <span data-i18n="run_btn">Run AI Computer Vision Assessment</span>
+        </button>
+
+        <hr class="divhr"/>
+
+        <!-- Webcam -->
+        <div class="text-center">
+          <span class="flabel d-block mb-2" data-i18n="cam_title">Real-Time Live Auto-Detect Camera</span>
+          <button id="camBtn" class="btn-cam mb-2" onclick="toggleWebcam()">
+            <i class="fa-solid fa-video"></i>
+            <span data-i18n="cam_start">Start Live Auto-Detect Camera</span>
+          </button>
+          <div id="camStatus" class="cam-status cs-off d-none mb-2">
+            <i class="fa-solid fa-circle-dot"></i>
+            <span data-i18n="cam_init">Initializing…</span>
+          </div>
+          <video id="webcamVid" class="w-100 rounded mt-1 d-none" autoplay playsinline style="border:1px solid var(--border);border-radius:var(--rm)"></video>
+          <canvas id="webcamCanvas" class="d-none"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- AGMARK Standards -->
+    <div class="card">
+      <div class="card-pad">
+        <div class="sec-head">
+          <span class="sec-icon" style="background:rgba(245,158,11,.18)"><i class="fa-solid fa-ruler-combined" style="color:#fbbf24"></i></span>
+          <span data-i18n="agmark_title">Official AGMARK Size Standards</span>
+        </div>
+        <table class="agmark-tbl">
+          <thead><tr>
+            <th data-i18n="col_grade">Grade</th>
+            <th data-i18n="col_diam">Diameter</th>
+            <th data-i18n="col_size">Commercial Use</th>
+            <th data-i18n="col_price">Price</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="gb gb-a">Grade A</span></td>
+              <td><strong>≥ 55 mm</strong></td>
+              <td data-i18n="a_size">Large / Export</td>
+              <td style="color:var(--green);font-weight:700" data-i18n="a_price">100% modal</td>
+            </tr>
+            <tr>
+              <td><span class="gb gb-b">Grade B</span></td>
+              <td><strong>40 – 55 mm</strong></td>
+              <td data-i18n="b_size">Medium / Wholesale</td>
+              <td style="color:var(--amber);font-weight:700" data-i18n="b_price">65% modal</td>
+            </tr>
+            <tr>
+              <td><span class="gb gb-s">Small</span></td>
+              <td><strong>30 – 40 mm</strong></td>
+              <td data-i18n="s_size">Sambar / Pickle</td>
+              <td style="color:var(--cyan);font-weight:700" data-i18n="s_price">45% modal</td>
+            </tr>
+            <tr>
+              <td><span class="gb gb-r">Reject</span></td>
+              <td><strong>&lt; 30 mm</strong></td>
+              <td data-i18n="r_size">Diseased / Mold / Defective</td>
+              <td style="color:var(--rose);font-weight:700" data-i18n="r_price">₹ 0</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Source Card -->
+    <div class="card">
+      <div class="card-pad">
+        <div class="sec-head">
+          <span class="sec-icon" style="background:rgba(56,189,248,.18)"><i class="fa-solid fa-building-columns" style="color:#38bdf8"></i></span>
+          <span data-i18n="source_title">Mandi Price Source &amp; Benchmarks</span>
+        </div>
+        <div class="src-bar">
+          <i class="fa-solid fa-database me-1" style="color:var(--blue)"></i>
+          <strong data-i18n="source_lbl">Source:</strong>
+          <span data-i18n="source_txt"> Agmarknet (Ministry of Agriculture, GoI) — Daily Wholesale Mandi Price Index</span>
+        </div>
+        <ul class="list-unstyled mb-0" style="font-size:.8rem;line-height:2.1">
+          <li><span class="gb gb-a me-2">Grade A</span><strong data-i18n="src_a">100%</strong> — Premium Export (&gt;55mm, sound produce)</li>
+          <li><span class="gb gb-b me-2">Grade B</span><strong data-i18n="src_b">65%</strong> — Standard Domestic Wholesale (40–55mm)</li>
+          <li><span class="gb gb-s me-2">Small</span><strong data-i18n="src_s">45%</strong> — Sambar / Pickle Grade (30–40mm)</li>
+          <li><span class="gb gb-r me-2">Reject</span><strong data-i18n="src_r">₹ 0</strong> — Mold, disease, or heavy defects — unfit for retail</li>
+        </ul>
+      </div>
+    </div>
+
+  </div><!-- /left col -->
+
+  <!-- ══════════ RIGHT COLUMN ══════════ -->
+  <div class="col-lg-7">
+
+    <!-- Price Chart -->
+    <div class="card" id="priceSec">
+      <div class="card-pad">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+          <div class="sec-head mb-0">
+            <span class="sec-icon" style="background:rgba(16,185,129,.18)"><i class="fa-solid fa-chart-line" style="color:#34d399"></i></span>
+            <span data-i18n="chart_title">Live Mandi Price &amp; 14-Day AI Forecast</span>
+          </div>
+          <div class="mandi-wrap">
+            <select id="mandiSelect">
+              <option value="Lasalgaon (Nashik, MH)">Lasalgaon (Nashik, MH)</option>
+              <option value="Azadpur (Delhi)">Azadpur (Delhi)</option>
+              <option value="Pune (MH)">Pune (MH)</option>
+              <option value="Bengaluru (KA)">Bengaluru (KA)</option>
+              <option value="Kurnool (AP)">Kurnool (AP)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="chart-wrap mb-3">
+          <canvas id="priceChart"></canvas>
+        </div>
+
+        <!-- Advice -->
+        <div class="advice-box mb-3">
+          <i class="fa-solid fa-lightbulb" style="font-size:1.8rem;color:var(--amber);flex-shrink:0"></i>
+          <div>
+            <div id="trendChip" class="trend-chip tc-flat" data-i18n="trend_loading">Loading…</div>
+            <div id="adviceText" style="font-weight:600;font-size:.86rem" data-i18n="advice_loading">Fetching market recommendation…</div>
+          </div>
+        </div>
+
+        <!-- Price KPIs -->
+        <div class="row g-2 mb-3">
+          <div class="col-4"><div class="metric-tile"><div class="mv" id="todayP">—</div><div class="ml" data-i18n="today_price">Today ₹/kg</div></div></div>
+          <div class="col-4"><div class="metric-tile"><div class="mv" id="p7d" style="color:var(--green)">—</div><div class="ml" data-i18n="price_7d">7-Day Forecast</div></div></div>
+          <div class="col-4"><div class="metric-tile"><div class="mv" id="p14d" style="color:var(--amber)">—</div><div class="ml" data-i18n="price_14d">14-Day Forecast</div></div></div>
+        </div>
+
+        <!-- Share buttons -->
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn-wa" onclick="shareWA()"><i class="fa-brands fa-whatsapp"></i><span data-i18n="share_wa">Share via WhatsApp</span></button>
+          <button class="btn-sm" onclick="shareSMS()"><i class="fa-solid fa-sms"></i><span data-i18n="share_sms">SMS Alert</span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CV Output -->
+    <div class="card" id="cvSec">
+      <div class="card-pad">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+          <div class="sec-head mb-0">
+            <span class="sec-icon" style="background:rgba(56,189,248,.18)"><i class="fa-solid fa-display" style="color:#38bdf8"></i></span>
+            <span data-i18n="cv_title">Real-Time AI Computer Vision Output</span>
+          </div>
+          <div id="alBadge" class="al-badge d-none">
+            <i class="fa-solid fa-brain" style="color:var(--amber)"></i>
+            <span data-i18n="al_active">AI Learning Active</span>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div id="emptyState" class="empty-state">
+          <i class="fa-solid fa-box-open"></i>
+          <h6 data-i18n="empty_title">No Produce Analyzed Yet</h6>
+          <p style="font-size:.82rem" data-i18n="empty_sub">Upload an image or start the live camera to trigger AI grading.</p>
+        </div>
+
+        <!-- Results -->
+        <div id="resultsWrap" class="d-none fade-up">
+          <!-- Annotated image -->
+          <div class="mb-3 text-center">
+            <img id="annotatedImg" class="vision-img" alt="CV Overlay"/>
+            <p class="mt-1" style="font-size:.72rem;color:var(--muted)" data-i18n="overlay_hint">Hover item cards to highlight bounding boxes</p>
+          </div>
+
+          <!-- Grade hero -->
+          <div id="gradeHero" class="grade-hero gh-n mb-3">
+            <div>
+              <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.2rem" data-i18n="batch_grade">Batch Grade</div>
+              <div id="gradeLabel" class="grade-lbl">—</div>
+            </div>
+            <div id="pricePill" class="price-pill">₹—</div>
+          </div>
+
+          <!-- KPI tiles -->
+          <div class="row g-2 mb-3">
+            <div class="col-4"><div class="metric-tile"><div id="avgDiam" class="mv">—</div><div class="ml" data-i18n="avg_diam">Avg Diameter</div></div></div>
+            <div class="col-4"><div class="metric-tile"><div id="itemCnt" class="mv">0</div><div class="ml" data-i18n="items_seg">Items Detected</div></div></div>
+            <div class="col-4"><div class="metric-tile"><div id="primDefect" class="mv" style="font-size:.9rem;padding-top:.15rem">—</div><div class="ml" data-i18n="primary_defect">Primary Defect</div></div></div>
+          </div>
+
+          <!-- Export row -->
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <button class="btn-sm" onclick="exportPDF()"><i class="fa-solid fa-file-pdf" style="color:var(--rose)"></i><span data-i18n="export_pdf">PDF Report</span></button>
+            <button class="btn-sm" onclick="exportExcel()"><i class="fa-solid fa-file-excel" style="color:#22c55e"></i><span data-i18n="export_xlsx">Excel Export</span></button>
+          </div>
+
+          <!-- Item log -->
+          <div style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.65rem" data-i18n="item_log">Per-Item AGMARK Inspection Log</div>
+          <div id="itemLog"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /right col -->
+</div><!-- /row -->
+</main>
+
+<!-- ═══════════════════════════════════════════════════
+     SCRIPTS
+════════════════════════════════════════════════════ -->
+<script>
+/* ── i18n ────────────────────────────────────────── */
+const LANG = {
+  en:{
+    hero_title:"AGMARK AI Onion Quality & Price Forecaster",
+    hero_sub:"Real-Time Computer Vision · AGMARK Grading · AI Price Trend Forecast",
+    inspect_title:"Image & Live Feed Inspection", upload_label:"Upload Produce Image",
+    drop_hint:"Drag & drop or click to browse", calib_label:"Camera Distance Calibration",
+    custom_px:"Custom px/mm value", run_btn:"Run AI Computer Vision Assessment",
+    cam_title:"Real-Time Live Auto-Detect Camera", cam_start:"Start Live Auto-Detect Camera",
+    cam_stop:"Stop Live Camera", cam_init:"Initializing…",
+    cam_live:"LIVE AUTO-DETECT ACTIVE", cam_detect:"ONION DETECTED — GRADING…",
+    agmark_title:"Official AGMARK Size Standards",
+    col_grade:"Grade", col_diam:"Diameter", col_size:"Commercial Use", col_price:"Price",
+    a_size:"Large / Export (≥55mm)", a_price:"100% modal",
+    b_size:"Medium / Wholesale (40-55mm)", b_price:"65% modal",
+    s_size:"Sambar / Pickle (30-40mm)", s_price:"45% modal",
+    r_size:"Diseased / Mold / Defective", r_price:"₹ 0",
+    source_title:"Mandi Price Source & Benchmarks", source_lbl:"Source:",
+    source_txt:" Agmarknet (Ministry of Agriculture, GoI) — Daily Wholesale Mandi Price Index",
+    src_a:"100%", src_b:"65%", src_s:"45%", src_r:"₹ 0",
+    chart_title:"Live Mandi Price & 14-Day AI Forecast",
+    trend_loading:"Loading…", advice_loading:"Fetching market recommendation…",
+    today_price:"Today ₹/kg", price_7d:"7-Day Forecast", price_14d:"14-Day Forecast",
+    share_wa:"Share via WhatsApp", share_sms:"SMS Alert",
+    cv_title:"Real-Time AI Computer Vision Output", al_active:"AI Learning Active",
+    empty_title:"No Produce Analyzed Yet", empty_sub:"Upload an image or start the live camera to trigger AI grading.",
+    overlay_hint:"Hover item cards to highlight bounding boxes", batch_grade:"Batch Grade",
+    avg_diam:"Avg Diameter", items_seg:"Items Detected", primary_defect:"Primary Defect",
+    export_pdf:"PDF Report", export_xlsx:"Excel Export",
+    item_log:"Per-Item AGMARK Inspection Log", no_produce:"No produce detected — place onions in frame.",
+    hist_lbl:"Historical Mandi Price (₹/kg)", fore_lbl:"14-Day AI Forecast (₹/kg)",
+    item_pfx:"ITEM #", d_diam:"Diam", d_area:"Area", d_rot:"Rot", d_color:"Color", d_sprout:"Sprout"
+  },
+  hi:{
+    hero_title:"AGMARK AI प्याज गुणवत्ता और मूल्य पूर्वानुमान",
+    hero_sub:"रियल-टाइम कंप्यूटर विज़न · AGMARK ग्रेडिंग · AI मूल्य पूर्वानुमान",
+    inspect_title:"छवि और लाइव फीड निरीक्षण", upload_label:"उत्पाद छवि अपलोड करें",
+    drop_hint:"यहाँ छवि खींचें या क्लिक करें", calib_label:"कैमरा दूरी कैलिब्रेशन",
+    custom_px:"कस्टम px/mm मान", run_btn:"AI कंप्यूटर विज़न मूल्यांकन चलाएं",
+    cam_title:"रियल-टाइम लाइव कैमरा", cam_start:"लाइव कैमरा शुरू करें",
+    cam_stop:"लाइव कैमरा बंद करें", cam_init:"शुरू हो रहा है…",
+    cam_live:"लाइव ऑटो-डिटेक्ट सक्रिय", cam_detect:"प्याज मिला — ग्रेडिंग…",
+    agmark_title:"आधिकारिक AGMARK आकार मानक",
+    col_grade:"ग्रेड", col_diam:"व्यास", col_size:"व्यावसायिक उपयोग", col_price:"मूल्य",
+    a_size:"बड़ा / निर्यात (≥55mm)", a_price:"100% मोडल",
+    b_size:"मध्यम / थोक (40-55mm)", b_price:"65% मोडल",
+    s_size:"सांबर / अचार (30-40mm)", s_price:"45% मोडल",
+    r_size:"रोगग्रस्त / फफूंद / दोषपूर्ण", r_price:"₹ 0",
+    source_title:"मंडी मूल्य स्रोत", source_lbl:"स्रोत:",
+    source_txt:" Agmarknet (कृषि मंत्रालय, भारत सरकार)",
+    src_a:"100%", src_b:"65%", src_s:"45%", src_r:"₹ 0",
+    chart_title:"लाइव मंडी मूल्य और 14 दिन का AI पूर्वानुमान",
+    trend_loading:"लोड हो रहा है…", advice_loading:"बाजार की सिफारिश लाई जा रही है…",
+    today_price:"आज ₹/किग्रा", price_7d:"7 दिन का पूर्वानुमान", price_14d:"14 दिन का पूर्वानुमान",
+    share_wa:"WhatsApp पर साझा करें", share_sms:"SMS अलर्ट",
+    cv_title:"AI कंप्यूटर विज़न आउटपुट", al_active:"AI मॉडल सीख रहा है",
+    empty_title:"अभी तक कोई विश्लेषण नहीं", empty_sub:"AI ग्रेडिंग के लिए छवि अपलोड करें।",
+    overlay_hint:"बाउंडिंग बॉक्स हाइलाइट करने के लिए होवर करें", batch_grade:"बैच ग्रेड",
+    avg_diam:"औसत व्यास", items_seg:"पहचाने गए आइटम", primary_defect:"मुख्य दोष",
+    export_pdf:"PDF रिपोर्ट", export_xlsx:"Excel निर्यात",
+    item_log:"प्रति-आइटम AGMARK लॉग", no_produce:"कोई उत्पाद नहीं मिला।",
+    hist_lbl:"ऐतिहासिक मंडी मूल्य (₹/किग्रा)", fore_lbl:"14 दिन का AI पूर्वानुमान (₹/किग्रा)",
+    item_pfx:"आइटम #", d_diam:"व्यास", d_area:"क्षेत्र", d_rot:"सड़न", d_color:"रंग", d_sprout:"अंकुर"
+  },
+  mr:{
+    hero_title:"AGMARK AI कांदा गुणवत्ता आणि किंमत अंदाज",
+    hero_sub:"रियल-टाइम संगणक दृष्टी · AGMARK ग्रेडिंग · AI किंमत अंदाज",
+    inspect_title:"प्रतिमा आणि थेट फीड तपासणी", upload_label:"उत्पादन प्रतिमा अपलोड करा",
+    drop_hint:"येथे प्रतिमा ड्रॅग करा किंवा क्लिक करा", calib_label:"कॅमेरा अंतर कॅलिब्रेशन",
+    custom_px:"कस्टम px/mm मूल्य", run_btn:"AI संगणक दृष्टी मूल्यांकन चालवा",
+    cam_title:"रियल-टाइम थेट कॅमेरा", cam_start:"थेट ऑटो-डिटेक्ट कॅमेरा सुरू करा",
+    cam_stop:"थेट कॅमेरा थांबवा", cam_init:"सुरू होत आहे…",
+    cam_live:"थेट ऑटो-डिटेक्ट सक्रिय", cam_detect:"कांदा सापडला — ग्रेडिंग…",
+    agmark_title:"अधिकृत AGMARK आकार मानके",
+    col_grade:"ग्रेड", col_diam:"व्यास", col_size:"व्यावसायिक वापर", col_price:"किंमत",
+    a_size:"निरोगी / चांगले उत्पादन", a_price:"100% मोडल",
+    r_size:"रोगग्रस्त / बुरशी / दोषपूर्ण", r_price:"₹ 0",
+    source_title:"मंडी किंमत स्रोत", source_lbl:"स्रोत:",
+    source_txt:" Agmarknet (कृषी मंत्रालय, भारत सरकार)",
+    src_a:"100%", src_b:"65%", src_s:"45%", src_r:"₹ 0",
+    chart_title:"थेट मंडी किंमत आणि 14 दिवसांचा AI अंदाज",
+    trend_loading:"लोड होत आहे…", advice_loading:"बाजार शिफारस आणत आहे…",
+    today_price:"आज ₹/किग्रा", price_7d:"7 दिवस अंदाज", price_14d:"14 दिवस अंदाज",
+    share_wa:"WhatsApp वर शेअर करा", share_sms:"SMS अलर्ट",
+    cv_title:"AI संगणक दृष्टी आउटपुट", al_active:"AI मॉडेल शिकत आहे",
+    empty_title:"अद्याप कोणतेही विश्लेषण नाही", empty_sub:"AI ग्रेडिंगसाठी प्रतिमा अपलोड करा.",
+    overlay_hint:"बाउंडिंग बॉक्स हायलाइट करण्यासाठी होव्हर करा", batch_grade:"बॅच ग्रेड",
+    avg_diam:"सरासरी व्यास", items_seg:"शोधलेले आयटम", primary_defect:"प्राथमिक दोष",
+    export_pdf:"PDF अहवाल", export_xlsx:"Excel निर्यात",
+    item_log:"प्रति-आयटम AGMARK नोंद", no_produce:"कोणतेही उत्पादन आढळले नाही.",
+    hist_lbl:"ऐतिहासिक मंडी किंमत (₹/किग्रा)", fore_lbl:"14 दिवसांचा AI अंदाज (₹/किग्रा)",
+    item_pfx:"आयटम #", d_diam:"व्यास", d_area:"क्षेत्रफळ", d_rot:"सडणे", d_color:"रंग", d_sprout:"अंकुर"
+  }
+};
+
+let lang = 'en', theme = 'dark', chart = null;
+let mktData = null, results = null;
+let stream = null, camInterval = null, processing = false, lastCapture = 0;
+
+const t = k => (LANG[lang]||LANG.en)[k] || LANG.en[k] || k;
+
+function applyLang() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    el.textContent = t(k);
+  });
+  const tb = document.getElementById('themeBtn');
+  tb.innerHTML = theme === 'dark'
+    ? '<i class="fa-solid fa-moon"></i> ' + t('dark_mode'||'Dark')
+    : '<i class="fa-solid fa-sun"></i> ' + t('light_mode'||'Light');
+}
+
+function setLang(l) {
+  lang = l;
+  document.querySelectorAll('.lang-btn').forEach((b,i) => {
+    b.classList.toggle('active', ['en','hi','mr'][i] === l);
+  });
+  applyLang();
+  if(mktData) updateAdvice(mktData);
+  if(results) renderResults(results);
+}
+
+/* ── Theme ─────────────────────────────────────────── */
+function toggleTheme() {
+  theme = theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', theme);
+  applyLang();
+  if(mktData) renderChart(mktData);
+}
+
+/* ── Navbar ────────────────────────────────────────── */
+function toggleMenu() {
+  const m = document.getElementById('mobileMenu');
+  const h = document.getElementById('hamburger');
+  m.classList.toggle('open');
+  h.innerHTML = m.classList.contains('open')
+    ? '<i class="fa-solid fa-xmark"></i>'
+    : '<i class="fa-solid fa-bars"></i>';
+}
+
+function navTo(id) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  const navH = document.getElementById('mainNav').offsetHeight;
+  window.scrollTo({ top: el.getBoundingClientRect().top + scrollY - navH - 14, behavior:'smooth' });
+  document.querySelectorAll('#navLinks .nav-link').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('onclick') && b.getAttribute('onclick').includes(id));
+  });
+}
+
+// Scroll-spy
+window.addEventListener('scroll', () => {
+  const navH = document.getElementById('mainNav').offsetHeight + 16;
+  const sy = window.scrollY;
+  const ids = ['inspectSec','priceSec','cvSec'];
+  let active = 0;
+  ids.forEach((id,i) => {
+    const el = document.getElementById(id);
+    if(el && el.getBoundingClientRect().top + sy - navH <= sy) active = i;
+  });
+  document.querySelectorAll('#navLinks .nav-link').forEach((b,i) => b.classList.toggle('active', i === active));
+  document.getElementById('mainNav').style.boxShadow = sy > 8 ? '0 4px 28px rgba(0,0,0,.45)' : 'none';
+}, {passive:true});
+
+/* ── Drop zone ─────────────────────────────────────── */
+const dz = document.getElementById('dropZone');
+const fi = document.getElementById('imageFile');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over') });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('over');
+  const f = e.dataTransfer.files[0]; if(f) setFile(f);
+});
+fi.addEventListener('change', () => { if(fi.files[0]) setFile(fi.files[0]) });
+function setFile(f) {
+  document.getElementById('dzName').textContent = '✓ ' + f.name;
+  dz.style.borderColor = 'var(--green)';
+}
+
+/* ── Calibration ────────────────────────────────────── */
+document.getElementById('distPreset').addEventListener('change', function() {
+  document.getElementById('customCalib').classList.toggle('d-none', this.value !== 'custom');
+  if(this.value !== 'custom') document.getElementById('calibPx').value = this.value;
+});
+
+/* ── Market data ────────────────────────────────────── */
+async function loadMarket(mandi) {
+  try {
+    const r = await fetch(`/market_trends?mandi_name=${encodeURIComponent(mandi)}`);
+    if(!r.ok) return;
+    mktData = await r.json();
+    updateAdvice(mktData);
+    renderChart(mktData);
+    document.getElementById('todayP').textContent = '₹' + mktData.today_modal_price_inr.toFixed(1);
+    document.getElementById('p7d').textContent   = '₹' + mktData.forecast_7d_price_inr.toFixed(1);
+    document.getElementById('p14d').textContent  = '₹' + mktData.forecast_14d_price_inr.toFixed(1);
+  } catch(e) { console.error(e) }
+}
+
+function updateAdvice(d) {
+  const chip = document.getElementById('trendChip');
+  chip.textContent = d.trend_direction;
+  const p = d.price_change_7d_pct;
+  chip.className = 'trend-chip ' + (p >= 3 ? 'tc-bull' : p <= -3 ? 'tc-bear' : 'tc-flat');
+  document.getElementById('adviceText').textContent = d.smart_storage_recommendation;
+}
+
+function renderChart(d) {
+  const dk = theme === 'dark';
+  const gc = dk ? 'rgba(51,65,85,.55)' : 'rgba(0,0,0,.07)';
+  const tc = dk ? '#5f7394' : '#94a3b8';
+  const labels = [...d.historical_dates, ...d.forecast_dates];
+  const hist = [...d.historical_prices, ...Array(d.forecast_prices.length).fill(null)];
+  const fore = [...Array(d.historical_prices.length-1).fill(null), d.historical_prices[d.historical_prices.length-1], ...d.forecast_prices];
+  const confH = fore.map(v => v !== null ? +(v*1.08).toFixed(1) : null);
+  const confL = fore.map(v => v !== null ? +(v*0.92).toFixed(1) : null);
+
+  const ctx = document.getElementById('priceChart').getContext('2d');
+  if(chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets:[
+      { label:t('hist_lbl'), data:hist, borderColor:'#38bdf8', backgroundColor:'rgba(56,189,248,.08)', fill:true, tension:.38, borderWidth:2, pointRadius:2, pointHoverRadius:5 },
+      { label:t('fore_lbl'), data:fore, borderColor:'#10b981', borderDash:[6,4], backgroundColor:'rgba(16,185,129,.08)', fill:true, tension:.38, borderWidth:2, pointRadius:2, pointHoverRadius:5 },
+      { label:'Upper Band', data:confH, borderColor:'rgba(16,185,129,.2)', fill:'+1', tension:.38, borderWidth:1, pointRadius:0, borderDash:[3,5] },
+      { label:'Lower Band', data:confL, borderColor:'rgba(16,185,129,.2)', fill:false, tension:.38, borderWidth:1, pointRadius:0, borderDash:[3,5] }
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      plugins:{
+        legend:{ labels:{ color:tc, font:{size:10}, filter:i=>!i.text.includes('Band') }},
+        tooltip:{
+          backgroundColor:dk?'#111d33':'#fff', borderColor:dk?'#1e3050':'#e2e8f0', borderWidth:1,
+          titleColor:dk?'#eef2ff':'#0f172a', bodyColor:dk?'#7a8fab':'#64748b',
+          callbacks:{ label:ctx=>ctx.parsed.y!=null?`${ctx.dataset.label.split('(')[0].trim()}: ₹${ctx.parsed.y}`:null }
+        }
+      },
+      scales:{
+        x:{ ticks:{color:tc,maxRotation:45,font:{size:8}}, grid:{color:gc} },
+        y:{ ticks:{color:tc,callback:v=>'₹'+v}, grid:{color:gc} }
+      }
+    }
+  });
+}
+
+/* ── Assessment ─────────────────────────────────────── */
+async function runAssessment() {
+  const f = fi.files[0]; if(!f){ alert('Please select an image first.'); return; }
+  await processFile(f);
+}
+
+async function processFile(file) {
+  let calib = parseFloat(document.getElementById('distPreset').value);
+  if(document.getElementById('distPreset').value === 'custom')
+    calib = parseFloat(document.getElementById('calibPx').value);
+  if(isNaN(calib)||calib<=0) calib = 2.5;
+
+  const mandi = document.getElementById('mandiSelect').value;
+  const fd = new FormData();
+  fd.append('file', file, file.name||'snap.jpg');
+
+  const btn = document.getElementById('runBtn');
+  if(!processing) { btn.disabled=true; btn.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i> Analyzing…'; }
+
+  try {
+    const r = await fetch(`/grade_image?pixels_per_mm=${calib}&mandi_name=${encodeURIComponent(mandi)}`,{method:'POST',body:fd});
+    if(!r.ok) throw new Error('Server error');
+    results = await r.json();
+    renderResults(results);
+    // Update hero sample count
+    if(results.active_learning_status) {
+      const m = results.active_learning_status.match(/(\d+)/);
+      if(m) document.getElementById('heroSamples').textContent = m[1];
+    }
+  } catch(e) { console.warn(e) }
+  finally {
+    btn.disabled=false;
+    btn.innerHTML=`<i class="fa-solid fa-microscope"></i> <span>${t('run_btn')}</span>`;
+  }
+}
+
+/* ── Render results ─────────────────────────────────── */
+function gcls(g) {
+  if(g.includes('Grade A')) return 'a';
+  if(g.includes('Grade B')) return 'b';
+  if(g.includes('Small'))   return 's';
+  if(g.includes('Reject'))  return 'r';
+  if(g.includes('Mixed'))   return 'm';
+  return 'n';
+}
+function gcol(c) {
+  return {a:'var(--green)',b:'var(--amber)',s:'var(--cyan)',r:'var(--rose)',m:'#f97316',n:'var(--muted)'}[c]||'var(--muted)';
+}
+
+function renderResults(d) {
+  document.getElementById('emptyState').classList.add('d-none');
+  const rw = document.getElementById('resultsWrap');
+  rw.classList.remove('d-none'); rw.classList.add('fade-up');
+
+  // AL badge
+  const al = document.getElementById('alBadge');
+  al.classList.toggle('d-none', !d.active_learning_status || d.active_learning_status.includes('Idle'));
+  if(!d.active_learning_status?.includes('Idle'))
+    al.innerHTML = `<i class="fa-solid fa-brain" style="color:var(--amber)"></i> ${d.active_learning_status}`;
+
+  // Image
+  if(d.annotated_image_base64)
+    document.getElementById('annotatedImg').src = 'data:image/jpeg;base64,' + d.annotated_image_base64;
+
+  // No produce
+  if(d.items_count === 0 || d.overall_batch_grade === 'No Produce Detected') {
+    setHero('n', t('no_produce'), null, true);
+    document.getElementById('avgDiam').textContent = '—';
+    document.getElementById('itemCnt').textContent = '0';
+    document.getElementById('primDefect').textContent = '—';
+    document.getElementById('itemLog').innerHTML = `<div style="text-align:center;padding:1.2rem;color:var(--muted);font-size:.83rem">${t('no_produce')}</div>`;
+    return;
+  }
+
+  const gc = gcls(d.overall_batch_grade);
+  setHero(gc, d.overall_batch_grade, d.estimated_mandi_price_inr, gc==='r');
+  document.getElementById('avgDiam').textContent = d.average_diameter_mm.toFixed(1) + ' mm';
+  document.getElementById('itemCnt').textContent = d.items_count;
+
+  let topDef = '—';
+  d.results.forEach(item => {
+    if(item.defects.primary_defect && !item.defects.primary_defect.includes('Sound'))
+      topDef = item.defects.primary_defect.split('(')[0].trim();
+  });
+  const pd = document.getElementById('primDefect');
+  pd.textContent = topDef;
+  pd.style.color = topDef === '—' ? 'var(--green)' : 'var(--rose)';
+
+  let html = '';
+  d.results.forEach(item => {
+    const gc2 = gcls(item.grade);
+    const col = gcol(gc2);
+    const bcls = {a:'gb-a',b:'gb-b',s:'gb-s',r:'gb-r',m:'',n:''}[gc2]||'';
+    html += `
+    <div class="item-card" id="ic-${item.item_id}"
+      onmouseenter="this.classList.add('hl')" onmouseleave="this.classList.remove('hl')">
+      <div class="d-flex justify-content-between align-items-center mb-1">
+        <strong style="color:var(--blue);font-size:.87rem">
+          <i class="fa-solid fa-crosshairs me-1"></i>${t('item_pfx')}${item.item_id}
+        </strong>
+        <span class="gb ${bcls}">${item.grade}</span>
+      </div>
+      <div style="font-size:.76rem;color:var(--muted);margin-bottom:.55rem">${item.agmark_standard}</div>
+      <div class="d-flex flex-wrap gap-2">
+        <span class="stat-pill">${t('d_diam')}: <b style="color:${col}">${item.metrics.diameter_mm}mm</b></span>
+        <span class="stat-pill">${t('d_area')}: <b>${item.metrics.area_cm2}cm²</b></span>
+        <span class="stat-pill" style="color:var(--rose)">${t('d_rot')}: <b>${item.defects.rot_percentage}%</b></span>
+        <span class="stat-pill" style="color:var(--green)">${t('d_color')}: <b>${(item.defects.color_score*100).toFixed(0)}%</b></span>
+        <span class="stat-pill" style="color:var(--amber)">${t('d_sprout')}: <b>${item.defects.sprout_percentage}%</b></span>
+      </div>
+      <div style="font-size:.73rem;margin-top:.45rem;color:var(--muted)">${item.quality_status}</div>
+    </div>`;
+  });
+  document.getElementById('itemLog').innerHTML = html;
+}
+
+function setHero(gc, label, price, isR) {
+  const h = document.getElementById('gradeHero');
+  const l = document.getElementById('gradeLabel');
+  const p = document.getElementById('pricePill');
+  h.className = 'grade-hero gh-' + gc;
+  l.textContent = label; l.style.color = gcol(gc);
+  p.className = (isR||price===0) ? 'price-pill price-pill-r' : 'price-pill';
+  p.textContent = (isR||price===0) ? '₹0 (Reject)' : '₹' + price.toFixed(1) + ' / kg';
+}
+
+/* ── Export PDF ─────────────────────────────────────── */
+function exportPDF() {
+  if(!results||results.items_count===0){ alert('No results to export.'); return; }
+  const {jsPDF} = window.jspdf;
+  const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const d = results, now = new Date().toLocaleString();
+  doc.setFillColor(8,14,29); doc.rect(0,0,210,297,'F');
+  doc.setTextColor(238,242,255);
+  doc.setFontSize(15); doc.setFont('helvetica','bold');
+  doc.text('AGMARK AI Onion Quality Report', 105, 18, {align:'center'});
+  doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(122,143,171);
+  doc.text(`Generated: ${now}  |  Mandi: ${document.getElementById('mandiSelect').value}`, 105, 25, {align:'center'});
+  doc.setDrawColor(30,48,80); doc.line(14,28,196,28);
+  doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(56,189,248);
+  doc.text('Batch Summary', 14, 35);
+  doc.setFont('helvetica','normal'); doc.setTextColor(238,242,255); doc.setFontSize(8.5);
+  doc.text(`Overall Grade: ${d.overall_batch_grade}`, 14, 42);
+  doc.text(`Average Diameter: ${d.average_diameter_mm.toFixed(1)} mm`, 14, 48);
+  doc.text(`Items Detected: ${d.items_count}`, 14, 54);
+  doc.text(`Estimated Mandi Price: ₹${d.estimated_mandi_price_inr.toFixed(1)} /kg`, 14, 60);
+  let y = 72;
+  doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(56,189,248);
+  doc.text('Per-Item Inspection Log', 14, y); y+=7;
+  d.results.forEach(item => {
+    if(y>270){doc.addPage();doc.setFillColor(8,14,29);doc.rect(0,0,210,297,'F');y=14;}
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(165,180,252);
+    doc.text(`Item #${item.item_id} — ${item.grade}`, 14, y); y+=5;
+    doc.setFont('helvetica','normal'); doc.setTextColor(203,213,225); doc.setFontSize(7.5);
+    doc.text(`  Diameter: ${item.metrics.diameter_mm}mm | Area: ${item.metrics.area_cm2}cm² | Rot: ${item.defects.rot_percentage}% | Sprout: ${item.defects.sprout_percentage}% | Color: ${(item.defects.color_score*100).toFixed(0)}%`, 14, y); y+=4.5;
+    doc.text(`  Defect: ${item.defects.primary_defect} | Est. Price: ₹${item.market_estimate.estimated_price_inr_per_kg}/kg`, 14, y); y+=7;
+  });
+  doc.save(`AGMARK_Report_${Date.now()}.pdf`);
+}
+
+/* ── Export Excel ───────────────────────────────────── */
+function exportExcel() {
+  if(!results||results.items_count===0){ alert('No results to export.'); return; }
+  const rows = results.results.map(i=>({
+    'Item ID':i.item_id,'Grade':i.grade,'Quality':i.quality_status,
+    'Diameter(mm)':i.metrics.diameter_mm,'Area(cm²)':i.metrics.area_cm2,
+    'Rot%':i.defects.rot_percentage,'Sprout%':i.defects.sprout_percentage,
+    'Color Score':i.defects.color_score,'Defect%':i.defects.defect_percentage,
+    'Primary Defect':i.defects.primary_defect,'Est. Price(₹/kg)':i.market_estimate.estimated_price_inr_per_kg
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'AGMARK Report');
+  XLSX.writeFile(wb, `AGMARK_Report_${Date.now()}.xlsx`);
+}
+
+/* ── Share ──────────────────────────────────────────── */
+function mktMsg() {
+  if(!mktData) return 'AGMARK Onion Price Alert!';
+  const d = mktData;
+  return `🧅 AGMARK Mandi Alert — ${d.selected_mandi}\n📅 Today: ₹${d.today_modal_price_inr}/kg\n📈 7-Day Forecast: ₹${d.forecast_7d_price_inr}/kg\n${d.trend_direction}\n💡 ${d.smart_storage_recommendation}`;
+}
+function shareWA()  { window.open(`https://wa.me/?text=${encodeURIComponent(mktMsg())}`, '_blank') }
+function shareSMS() { window.open(`sms:?body=${encodeURIComponent(mktMsg())}`, '_blank') }
+
+/* ── Webcam ─────────────────────────────────────────── */
+function checkFrame(ctx, w, h) {
+  try {
+    const data = ctx.getImageData(0,0,w,h).data;
+    let o=0, s=0;
+    for(let i=0;i<data.length;i+=16){
+      const r=data[i],g=data[i+1],b=data[i+2];
+      if(r>130&&g>80&&g<160&&b>50&&b<130&&r>g&&g>b&&(r-g)>15){s++;continue;}
+      if((r>130&&r>g+40&&r>b+25)||(r>140&&g>100&&b<90&&(r-g)<55&&(r-b)>50)||(r>190&&g>190&&b>190&&Math.abs(r-g)<15&&Math.abs(r-b)<15)) o++;
+    }
+    return s/(data.length/16)<.25 && o/(data.length/16)>.16;
+  } catch{return false;}
+}
+
+async function toggleWebcam() {
+  const btn = document.getElementById('camBtn');
+  const vid = document.getElementById('webcamVid');
+  const st  = document.getElementById('camStatus');
+  if(!stream) {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},facingMode:'environment'}});
+      vid.srcObject = stream; vid.classList.remove('d-none');
+      st.classList.remove('d-none');
+      st.className='cam-status cs-live pulse mb-2';
+      st.innerHTML=`<i class="fa-solid fa-circle-dot"></i> ${t('cam_live')}`;
+      btn.outerHTML=`<button id="camBtn" class="btn-cam-stop mb-2" onclick="toggleWebcam()"><i class="fa-solid fa-power-off"></i> <span>${t('cam_stop')}</span></button>`;
+      camInterval = setInterval(async()=>{
+        const now=Date.now();
+        if(processing||(now-lastCapture<1500)) return;
+        if(vid.videoWidth>0){
+          const cv=document.getElementById('webcamCanvas');
+          cv.width=vid.videoWidth; cv.height=vid.videoHeight;
+          const cx=cv.getContext('2d'); cx.drawImage(vid,0,0);
+          if(checkFrame(cx,cv.width,cv.height)){
+            processing=true; lastCapture=Date.now();
+            st.className='cam-status cs-detect mb-2';
+            st.innerHTML=`<i class="fa-solid fa-bolt"></i> ${t('cam_detect')}`;
+            cv.toBlob(async blob=>{
+              if(blob){ const f=new File([blob],'live.jpg',{type:'image/jpeg'}); await processFile(f); }
+              processing=false;
+              st.className='cam-status cs-live pulse mb-2';
+              st.innerHTML=`<i class="fa-solid fa-circle-dot"></i> ${t('cam_live')}`;
+            },'image/jpeg',.85);
+          }
+        }
+      },300);
+    } catch(e){ alert('Camera error: '+e.message); }
+  } else {
+    clearInterval(camInterval); stream.getTracks().forEach(t=>t.stop()); stream=null;
+    vid.classList.add('d-none'); st.classList.add('d-none');
+    document.getElementById('camBtn').outerHTML=`<button id="camBtn" class="btn-cam mb-2" onclick="toggleWebcam()"><i class="fa-solid fa-video"></i> <span>${t('cam_start')}</span></button>`;
+  }
+}
+
+/* ── Mandi select ───────────────────────────────────── */
+document.getElementById('mandiSelect').addEventListener('change', function(){ loadMarket(this.value); });
+
+/* ── Init ───────────────────────────────────────────── */
+window.addEventListener('load', () => {
+  applyLang();
+  loadMarket(document.getElementById('mandiSelect').value);
+});
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
